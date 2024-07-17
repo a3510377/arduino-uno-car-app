@@ -3,7 +3,7 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct Error {
     pub kind: ErrorKind,
-    pub description: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

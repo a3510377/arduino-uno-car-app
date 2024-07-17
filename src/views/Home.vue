@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useIntervalFn } from '@vueuse/core';
 
 import Select from 'primevue/select';
@@ -9,6 +9,7 @@ import { availablePorts, IPortInfo, SerialPort } from '../utils/serial';
 
 const ports = ref<Record<string, IPortInfo>>({});
 const selectedPort = ref<string>('');
+const connected = ref<boolean>(false);
 const connecting = ref<boolean>(false);
 
 watch(selectedPort, () => (connecting.value = false));
@@ -27,34 +28,34 @@ useIntervalFn(
   { immediate: true }
 );
 
-const connectPort = async () => {
-  connecting.value = true;
-  const port = new SerialPort(selectedPort.value, {});
-  port.addListener('data', console.log);
-  // let buf = '';
-  // port.watch((data) => {
-  //   buf += data;
-  //   const lines = buf.split('\n');
-  //   if (lines.length > 1) {
-  //     buf = lines.pop() ?? '';
-  //     for (const line of lines) {
-  //       console.log(line.length);
-  //       console.log(line);
-  //     }
-  //   }
-  // });
-  await port.open();
-  await port.startRead().catch((e) => console.log(e));
-  // invoke('plugin:serialport|connect_port', { portName: selectedPort.value })
-  //   .then((status) => {
-  //     console.log(status);
+let currentPort: SerialPort | null = null;
 
-  //     connecting.value = false;
-  //   })
-  //   .catch((e) => {
-  //     console.log(e);
-  //     connecting.value = false;
-  //   });
+onUnmounted(async () => {
+  await currentPort?.close();
+});
+const connectPort = async () => {
+  await currentPort?.close().catch(console.log);
+
+  if (connected.value) {
+    connected.value = false;
+    return;
+  }
+  if (!selectedPort.value) {
+    return;
+  }
+
+  connected.value = false;
+  connecting.value = true;
+
+  const port = new SerialPort(selectedPort.value, {});
+  currentPort = port;
+
+  port.addListener('data', console.log);
+  await port.open().catch((e) => console.log(e));
+  await port.startRead().catch((e) => console.log(e));
+
+  connected.value = true;
+  connecting.value = false;
 };
 </script>
 
@@ -75,7 +76,7 @@ const connectPort = async () => {
       <Button
         class="max-w-24"
         type="button"
-        label="連線"
+        :label="connected ? '斷線' : '連線'"
         :loading="connecting"
         @click="connectPort"
       />

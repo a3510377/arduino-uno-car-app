@@ -28,6 +28,9 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             available_ports,
             connect_port,
             start_read_port,
+            close_port,
+            close_all_port,
+            cancel_read_port,
         ])
         .build()
 }

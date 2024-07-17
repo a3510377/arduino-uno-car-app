@@ -13,6 +13,10 @@ export const availablePorts = (): Promise<IPortInfo[]> => {
   return invokeSerialPlugin('available_ports', {});
 };
 
+export const closeAllPort = (): Promise<null> => {
+  return invokeSerialPlugin('close_all_port', {});
+};
+
 export class SerialPort {
   isOpen: boolean = false;
   settings: ISerialPortOptions;
@@ -31,11 +35,17 @@ export class SerialPort {
     this.settings = { baudRate: 115200, ...options };
   }
 
-  open(): Promise<null> {
-    return invokeSerialPlugin('connect_port', {
+  async open(): Promise<null> {
+    if (this.isOpen) {
+      return null;
+    }
+
+    const result = await invokeSerialPlugin('connect_port', {
       portName: this.portName,
       ...this.settings,
     });
+    this.isOpen = true;
+    return result;
   }
 
   async startRead(size?: number, interval?: number): Promise<null> {
@@ -45,6 +55,30 @@ export class SerialPort {
       size,
       interval,
     });
+  }
+
+  async stopRead(): Promise<null> {
+    await invokeSerialPlugin('cancel_read_port', { portName: this.portName });
+    this.cancelListen();
+    return null;
+  }
+
+  async close(): Promise<null> {
+    if (this.isOpen) {
+      await this.forceClose();
+      this.isOpen = false;
+    }
+    return null;
+  }
+
+  async forceClose(): Promise<null> {
+    await invokeSerialPlugin('close_port', {
+      portName: this.portName,
+    }).catch(console.debug);
+
+    this.isOpen = false;
+    this.cancelListen();
+    return null;
   }
 
   addListener<K extends keyof ISerialPortEvents>(
@@ -108,7 +142,7 @@ export class SerialPort {
   }
 }
 
-/*  */
+/* -------------------------------------------------------------------- */
 
 export type FlowControlType = 'none' | 'software' | 'hardware';
 export type DataBitsType = 5 | 6 | 7 | 8;
@@ -154,21 +188,30 @@ export interface ISerialPluginCommandOptions {
   available_ports: {};
   connect_port: ISerialPluginCommandConnectPortOption;
   start_read_port: ISerialPluginCommandStartReadPortOption;
+  close_port: ISerialPluginCommandBasePortOption;
+  close_all_port: {};
+  cancel_read_port: ISerialPluginCommandBasePortOption;
 }
 
 export interface ISerialPluginCommandResult {
   available_ports: IPortInfo[];
   connect_port: null;
   start_read_port: null;
+  close_port: null;
+  close_all_port: null;
+  cancel_read_port: null;
+}
+
+export interface ISerialPluginCommandBasePortOption {
+  portName: string;
 }
 
 export interface ISerialPluginCommandConnectPortOption
-  extends ISerialPortOptions {
-  portName: string;
-}
+  extends ISerialPortOptions,
+    ISerialPluginCommandBasePortOption {}
 
-export interface ISerialPluginCommandStartReadPortOption {
-  portName: string;
+export interface ISerialPluginCommandStartReadPortOption
+  extends ISerialPluginCommandBasePortOption {
   size?: number;
   interval?: number;
 }

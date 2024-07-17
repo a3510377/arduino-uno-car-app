@@ -2,12 +2,34 @@ use std::{sync::mpsc, thread, time::Duration};
 
 use regex::Regex;
 use serialport::SerialPortType;
+use std::io::ErrorKind as IOErrorKind;
 use tauri::{Runtime, State, Window};
 
+use super::errors;
 use super::types::{
     parse_data_bits, parse_flow_control, parse_parity, parse_serialport_error_kind,
     parse_stop_bits, PortInfo, ReadData, SerialPortState, SerialPortsState,
 };
+
+fn get_port_from_status<T, F: FnOnce(&mut SerialPortState) -> Result<T, errors::Error>>(
+    state: State<'_, SerialPortsState>,
+    port_name: &str,
+    f: F,
+) -> Result<T, errors::Error> {
+    match state.listen_ports.lock() {
+        Ok(mut ports) => match ports.get_mut(port_name) {
+            Some(port) => f(port),
+            None => Err(errors::Error {
+                kind: errors::ErrorKind::NoDevice,
+                description: Some(format!("Port {} not found", port_name)),
+            }),
+        },
+        Err(_) => Err(errors::Error {
+            kind: errors::ErrorKind::Unknown,
+            description: Some("Failed to lock ports".to_string()),
+        }),
+    }
+}
 
 #[tauri::command]
 pub fn available_ports() -> Vec<PortInfo> {
@@ -65,13 +87,13 @@ pub fn connect_port(
     parity: Option<String>,
     stop_bits: Option<usize>,
     timeout: Option<u64>,
-) -> Result<(), super::errors::Error> {
+) -> Result<(), errors::Error> {
     match ports_status.listen_ports.lock() {
         Ok(mut ports) => {
             if ports.contains_key(&port_name) {
-                return Err(super::errors::Error {
-                    kind: super::errors::ErrorKind::AlreadyOpen,
-                    description: "".to_string(),
+                return Err(errors::Error {
+                    kind: errors::ErrorKind::AlreadyOpen,
+                    description: Some(format!("Port {} already open", port_name)),
                 });
             }
 
@@ -88,15 +110,15 @@ pub fn connect_port(
 
                     Ok(())
                 }
-                Err(err) => Err(super::errors::Error {
+                Err(err) => Err(errors::Error {
                     kind: parse_serialport_error_kind(err.kind()),
-                    description: err.description,
+                    description: Some(err.description),
                 }),
             }
         }
-        Err(err) => Err(super::errors::Error {
-            kind: super::errors::ErrorKind::Unknown,
-            description: err.to_string(),
+        Err(_) => Err(errors::Error {
+            kind: errors::ErrorKind::Unknown,
+            description: Some("Failed to lock ports".to_string()),
         }),
     }
 }
@@ -108,89 +130,156 @@ pub fn start_read_port<R: Runtime>(
     port_name: String,
     interval: Option<u64>,
     size: Option<usize>,
-) -> Result<(), super::errors::Error> {
-    match ports_status.listen_ports.lock() {
-        Ok(mut ports) => {
-            if let Some(port) = ports.get_mut(&port_name) {
-                if port.sender.is_some() {
-                    return Ok(());
-                }
+) -> Result<(), errors::Error> {
+    get_port_from_status(ports_status, &port_name.clone(), |port| {
+        if port.sender.is_some() {
+            return Ok(());
+        }
 
-                let (tx, rx) = mpsc::channel::<usize>();
-                port.sender = Some(tx);
+        let (tx, rx) = mpsc::channel::<usize>();
+        port.sender = Some(tx);
 
-                let event_name = format!("plugin:serialport:read-{port_name}");
-                let event_string_name = format!("plugin:serialport:read-string-{port_name}");
-                let mut port = port.port.try_clone().map_err(|err| super::errors::Error {
-                    kind: super::errors::ErrorKind::Unknown,
-                    description: err.to_string(),
-                })?;
+        let event_name = format!("plugin:serialport:read-{port_name}");
+        let event_string_name = format!("plugin:serialport:read-string-{port_name}");
 
-                let mut incomplete_buffer: Vec<u8> = Vec::new();
-                thread::spawn(move || loop {
-                    match rx.try_recv() {
-                        Ok(_) => break,
-                        Err(err) => match err {
-                            mpsc::TryRecvError::Empty => {}
-                            mpsc::TryRecvError::Disconnected => {
-                                println!("Disconnected from read thread");
-                                break;
-                            }
-                        },
+        let mut port = port.port.try_clone().map_err(|err| errors::Error {
+            kind: errors::ErrorKind::Unknown,
+            description: Some(err.to_string()),
+        })?;
+
+        let mut incomplete_buffer: Vec<u8> = Vec::new();
+        thread::spawn(move || loop {
+            match rx.try_recv() {
+                Ok(_) => break,
+                Err(err) => match err {
+                    mpsc::TryRecvError::Empty => {}
+                    mpsc::TryRecvError::Disconnected => {
+                        println!("Disconnected from read thread");
+                        break;
                     }
+                },
+            }
 
-                    let mut buf: Vec<u8> = vec![0; size.unwrap_or(1024)];
-                    if let Ok(size) = port.read(buf.as_mut_slice()) {
+            let mut buf: Vec<u8> = vec![0; size.unwrap_or(1024)];
+            match port.read(buf.as_mut_slice()) {
+                Ok(size) => {
+                    let _ = window.emit(
+                        &event_name,
+                        ReadData {
+                            size,
+                            data: &buf[..size],
+                        },
+                    );
+                    incomplete_buffer.extend_from_slice(&buf[..size]);
+
+                    if let Ok(valid_str) = std::str::from_utf8(&incomplete_buffer) {
                         let _ = window.emit(
-                            &event_name,
+                            &event_string_name,
                             ReadData {
-                                size,
-                                data: &buf[..size],
+                                size: valid_str.len(),
+                                data: valid_str.as_bytes(),
                             },
                         );
-                        incomplete_buffer.extend_from_slice(&buf[..size]);
+                        incomplete_buffer.clear();
+                    } else {
+                        // if the data is not valid UTF-8, only keep the bytes that are valid
+                        let valid_up_to = incomplete_buffer
+                            .iter()
+                            .rposition(|&c| c & 0x80 == 0)
+                            .unwrap_or(0);
 
-                        if let Ok(valid_str) = std::str::from_utf8(&incomplete_buffer) {
-                            let _ = window.emit(
-                                &event_string_name,
-                                ReadData {
-                                    size: valid_str.len(),
-                                    data: valid_str.as_bytes(),
-                                },
-                            );
-                            incomplete_buffer.clear();
-                        } else {
-                            // if the data is not valid UTF-8, only keep the bytes that are valid
-                            let valid_up_to = incomplete_buffer
-                                .iter()
-                                .rposition(|&c| c & 0x80 == 0)
-                                .unwrap_or(0);
-
-                            let (valid, remainder) = incomplete_buffer.split_at(valid_up_to);
-                            let _ = window.emit(
-                                &event_string_name,
-                                ReadData {
-                                    size: valid.len(),
-                                    data: valid,
-                                },
-                            );
-                            incomplete_buffer = remainder.to_vec();
-                        }
+                        let (valid, remainder) = incomplete_buffer.split_at(valid_up_to);
+                        let _ = window.emit(
+                            &event_string_name,
+                            ReadData {
+                                size: valid.len(),
+                                data: valid,
+                            },
+                        );
+                        incomplete_buffer = remainder.to_vec();
                     }
+                }
+                Err(err) => match err.kind() {
+                    IOErrorKind::NotFound | IOErrorKind::PermissionDenied => {
+                        let _ = window
+                            .emit(&format!("plugin:serialport:disconnected-{}", port_name), ());
 
-                    thread::sleep(Duration::from_millis(interval.unwrap_or(200)));
-                });
-                Ok(())
-            } else {
-                Err(super::errors::Error {
-                    kind: super::errors::ErrorKind::NoDevice,
-                    description: "".to_string(),
-                })
+                        break;
+                    }
+                    _ => {}
+                },
             }
+
+            thread::sleep(Duration::from_millis(interval.unwrap_or(200)));
+        });
+        Ok(())
+    })
+}
+
+#[tauri::command]
+pub fn close_port(
+    ports_status: State<'_, SerialPortsState>,
+    port_name: String,
+) -> Result<(), errors::Error> {
+    let mut ports = ports_status
+        .listen_ports
+        .lock()
+        .map_err(|_| errors::Error {
+            kind: errors::ErrorKind::Unknown,
+            description: Some("Failed to lock ports".to_string()),
+        })?;
+
+    if let Some(port) = ports.remove(&port_name) {
+        if let Some(sender) = &port.sender {
+            sender.send(0).map_err(|err| errors::Error {
+                kind: errors::ErrorKind::Unknown,
+                description: Some(err.to_string()),
+            })?;
         }
-        Err(err) => Err(super::errors::Error {
-            kind: super::errors::ErrorKind::Unknown,
-            description: err.to_string(),
-        }),
+        Ok(())
+    } else {
+        Err(errors::Error {
+            kind: errors::ErrorKind::NoDevice,
+            description: Some(format!("Port {} not found", port_name)),
+        })
     }
+}
+
+#[tauri::command]
+pub fn close_all_port(ports_status: State<'_, SerialPortsState>) -> Result<(), errors::Error> {
+    let ports = ports_status
+        .listen_ports
+        .lock()
+        .map_err(|_| errors::Error {
+            kind: errors::ErrorKind::Unknown,
+            description: Some("Failed to lock ports".to_string()),
+        })?;
+
+    for port in ports.values() {
+        if let Some(sender) = &port.sender {
+            sender.send(0).map_err(|err| errors::Error {
+                kind: errors::ErrorKind::Unknown,
+                description: Some(err.to_string()),
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn cancel_read_port(
+    ports_status: State<'_, SerialPortsState>,
+    port_name: String,
+) -> Result<(), errors::Error> {
+    get_port_from_status(ports_status, &port_name, |port| {
+        if let Some(sender) = &port.sender {
+            sender.send(0).map_err(|_| errors::Error {
+                kind: errors::ErrorKind::Unknown,
+                description: None,
+            })
+        } else {
+            Ok(())
+        }
+    })
 }
