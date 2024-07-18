@@ -45,6 +45,10 @@ export class SerialPort {
       ...this.settings,
     });
     this.isOpen = true;
+    listen(`plugin:serialport:disconnect-${this.portName}`, async () => {
+      this.isOpen = false;
+      await this.close();
+    });
     return result;
   }
 
@@ -65,6 +69,7 @@ export class SerialPort {
 
   async close(): Promise<null> {
     if (this.isOpen) {
+      this.emit('close');
       await this.forceClose();
       this.isOpen = false;
     }
@@ -104,6 +109,10 @@ export class SerialPort {
         delete this.events[name];
       }
     }
+  }
+
+  removeAllListener(): void {
+    this.events = {};
   }
 
   emit<K extends keyof ISerialPortEvents>(

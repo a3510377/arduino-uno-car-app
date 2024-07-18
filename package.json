@@ -12,6 +12,7 @@
   "dependencies": {
     "@primevue/themes": "^4.0.0",
     "@tauri-apps/api": "^1",
+    "@types/node": "^20.14.11",
     "@vueuse/core": "^10.11.0",
     "pinia": "^2.1.7",
     "primeicons": "^7.0.0",

@@ -147,70 +147,89 @@ pub fn start_read_port<R: Runtime>(
             description: Some(err.to_string()),
         })?;
 
-        let mut incomplete_buffer: Vec<u8> = Vec::new();
-        thread::spawn(move || loop {
-            match rx.try_recv() {
-                Ok(_) => break,
-                Err(err) => match err {
-                    mpsc::TryRecvError::Empty => {}
-                    mpsc::TryRecvError::Disconnected => {
-                        println!("Disconnected from read thread");
-                        break;
-                    }
-                },
-            }
+        thread::spawn(move || {
+            let mut count: u32 = 0;
+            let mut incomplete_buffer: Vec<u8> = Vec::new();
+            loop {
+                match rx.try_recv() {
+                    Ok(_) => break,
+                    Err(err) => match err {
+                        mpsc::TryRecvError::Empty => {}
+                        mpsc::TryRecvError::Disconnected => {
+                            println!("Disconnected from read thread");
+                            break;
+                        }
+                    },
+                }
 
-            let mut buf: Vec<u8> = vec![0; size.unwrap_or(1024)];
-            match port.read(buf.as_mut_slice()) {
-                Ok(size) => {
-                    let _ = window.emit(
-                        &event_name,
-                        ReadData {
-                            size,
-                            data: &buf[..size],
-                        },
-                    );
-                    incomplete_buffer.extend_from_slice(&buf[..size]);
-
-                    if let Ok(valid_str) = std::str::from_utf8(&incomplete_buffer) {
+                let mut buf: Vec<u8> = vec![0; size.unwrap_or(1024)];
+                match port.read(buf.as_mut_slice()) {
+                    Ok(size) => {
                         let _ = window.emit(
-                            &event_string_name,
+                            &event_name,
                             ReadData {
-                                size: valid_str.len(),
-                                data: valid_str.as_bytes(),
+                                size,
+                                data: &buf[..size],
+                            },
+                        );
+                        incomplete_buffer.extend_from_slice(&buf[..size]);
+
+                        if let Ok(valid_str) = std::str::from_utf8(&incomplete_buffer) {
+                            let _ = window.emit(
+                                &event_string_name,
+                                ReadData {
+                                    size: valid_str.len(),
+                                    data: valid_str.as_bytes(),
+                                },
+                            );
+                            incomplete_buffer.clear();
+                        } else {
+                            // if the data is not valid UTF-8, only keep the bytes that are valid
+                            let valid_up_to = incomplete_buffer
+                                .iter()
+                                .rposition(|&c| c & 0x80 == 0)
+                                .unwrap_or(0);
+
+                            let (valid, remainder) = incomplete_buffer.split_at(valid_up_to);
+                            let _ = window.emit(
+                                &event_string_name,
+                                ReadData {
+                                    size: valid.len(),
+                                    data: valid,
+                                },
+                            );
+                            incomplete_buffer = remainder.to_vec();
+                        }
+                        count = 0;
+                    }
+                    Err(err) => match err.kind() {
+                        IOErrorKind::NotFound | IOErrorKind::PermissionDenied => {
+                            let _ = window
+                                .emit(&format!("plugin:serialport:disconnect-{}", port_name), ());
+
+                            break;
+                        }
+                        _ => {}
+                    },
+                }
+
+                thread::sleep(Duration::from_millis(interval.unwrap_or(200)));
+                if !incomplete_buffer.is_empty() {
+                    if count > 2 {
+                        count = 0;
+                        let _ = window.emit(
+                            &format!("plugin:serialport:read-{}", port_name),
+                            ReadData {
+                                size: incomplete_buffer.len(),
+                                data: incomplete_buffer.as_slice(),
                             },
                         );
                         incomplete_buffer.clear();
                     } else {
-                        // if the data is not valid UTF-8, only keep the bytes that are valid
-                        let valid_up_to = incomplete_buffer
-                            .iter()
-                            .rposition(|&c| c & 0x80 == 0)
-                            .unwrap_or(0);
-
-                        let (valid, remainder) = incomplete_buffer.split_at(valid_up_to);
-                        let _ = window.emit(
-                            &event_string_name,
-                            ReadData {
-                                size: valid.len(),
-                                data: valid,
-                            },
-                        );
-                        incomplete_buffer = remainder.to_vec();
+                        count += 1;
                     }
                 }
-                Err(err) => match err.kind() {
-                    IOErrorKind::NotFound | IOErrorKind::PermissionDenied => {
-                        let _ = window
-                            .emit(&format!("plugin:serialport:disconnected-{}", port_name), ());
-
-                        break;
-                    }
-                    _ => {}
-                },
             }
-
-            thread::sleep(Duration::from_millis(interval.unwrap_or(200)));
         });
         Ok(())
     })
