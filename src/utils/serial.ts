@@ -82,6 +82,26 @@ export class SerialPort<
     return null;
   }
 
+  async write(value: string): Promise<number> {
+    if (!this.isOpen) {
+      return Promise.reject('not open');
+    }
+    return await invokeSerialPlugin('write_port', {
+      value,
+      portName: this.serialPortName,
+    });
+  }
+
+  async writeBinary(value: ArrayBuffer): Promise<number> {
+    if (!this.isOpen) {
+      return Promise.reject('not open');
+    }
+    return await invokeSerialPlugin('write_binary_port', {
+      value,
+      portName: this.serialPortName,
+    });
+  }
+
   async close(): Promise<null> {
     await invokeSerialPlugin('close_port', {
       portName: this.serialPortName,
@@ -221,6 +241,8 @@ export interface ISerialPluginCommandOptions {
   close_port: ISerialPluginCommandBasePortOption;
   close_all_port: {};
   cancel_read_port: ISerialPluginCommandBasePortOption;
+  write_port: ISerialPluginCommandWritePortOption;
+  write_binary_port: ISerialPluginCommandWriteBinaryPortOption;
 }
 
 export interface ISerialPluginCommandResult {
@@ -230,6 +252,8 @@ export interface ISerialPluginCommandResult {
   close_port: null;
   close_all_port: null;
   cancel_read_port: null;
+  write_port: number;
+  write_binary_port: number;
 }
 
 export interface ISerialPluginCommandBasePortOption {
@@ -244,4 +268,14 @@ export interface ISerialPluginCommandStartReadPortOption
   extends ISerialPluginCommandBasePortOption {
   size?: number;
   interval?: number;
+}
+
+export interface ISerialPluginCommandWritePortOption
+  extends ISerialPluginCommandBasePortOption {
+  value: string;
+}
+
+export interface ISerialPluginCommandWriteBinaryPortOption
+  extends ISerialPluginCommandBasePortOption {
+  value: ArrayBuffer;
 }

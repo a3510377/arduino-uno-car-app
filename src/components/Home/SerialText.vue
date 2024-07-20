@@ -38,10 +38,9 @@ port.on('new_line', async () => {
 </script>
 
 <template>
-  <!-- 470 480 -->
   <div
     :class="[
-      'relative h-96 p-2 border w-full text-xl rounded-md border-[--p-button-outlined-primary-border-color]',
+      'relative h-5/6 p-2 border w-full text-xl rounded-md border-[--p-button-outlined-primary-border-color]',
       'mt-5',
     ]"
   >

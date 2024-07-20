@@ -302,3 +302,37 @@ pub fn cancel_read_port(
         }
     })
 }
+
+#[tauri::command]
+pub fn write_port(
+    ports_status: State<'_, SerialPortsState>,
+    port_name: String,
+    value: String,
+) -> Result<usize, errors::Error> {
+    get_port_from_status(ports_status, &port_name, |port| {
+        match port.port.write(value.as_bytes()) {
+            Ok(size) => Ok(size),
+            Err(_) => Err(errors::Error {
+                kind: errors::ErrorKind::Unknown,
+                description: None,
+            }),
+        }
+    })
+}
+
+#[tauri::command]
+pub fn write_binary_port(
+    ports_status: State<'_, SerialPortsState>,
+    port_name: String,
+    value: Vec<u8>,
+) -> Result<usize, errors::Error> {
+    get_port_from_status(ports_status, &port_name, |port| {
+        match port.port.write(&value) {
+            Ok(size) => Ok(size),
+            Err(_) => Err(errors::Error {
+                kind: errors::ErrorKind::Unknown,
+                description: None,
+            }),
+        }
+    })
+}

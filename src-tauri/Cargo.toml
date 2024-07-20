@@ -2,7 +2,7 @@
 name = "tauri-app"
 version = "0.0.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["a3510377"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,7 +11,7 @@ tauri-build = { version = "1", features = [] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-tauri = { version = "1", features = ["shell-open"] }
+tauri = { version = "1", features = ["shell-open", "devtools"] }
 serialport = { version = "4.4.0", features = ["serde"] }
 serde_json = "1"
 async-std = "1.12.0"

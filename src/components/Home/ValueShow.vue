@@ -1,10 +1,13 @@
 <template>
   <div
-    class="grid grid-flow-row-dense grid-cols-3 grid-rows-3 m-2 select-none w-1/2 h-full p-5 border rounded-md text-xl"
+    class="value-show grid h-full grid-flow-row-dense grid-cols-3 grid-rows-3 m-2 select-none w-1/2 p-5 border rounded-md text-xl"
   >
     <div v-for="(value, key) in valueData" :key="key">
       <div class="text-gray-400 mr-2">{{ key }}</div>
-      <div :class="{ 'text-red-500': hasChange(key as string) }">
+      <div
+        class="transition-colors"
+        :class="{ 'text-red-500': hasChange(key as string) }"
+      >
         {{ value }}
       </div>
     </div>
@@ -31,7 +34,7 @@ watch(
 
         changeKeys.value[key] = +setTimeout(() => {
           changeKeys.value[key] = -1;
-        }, 1000);
+        }, 500);
       }
     }
     oldValueData = { ...newVal };

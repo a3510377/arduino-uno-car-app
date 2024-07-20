@@ -22,8 +22,8 @@
         "title": "Arduino Uno Car App",
         "width": 770,
         "height": 490,
-        "minWidth": 770,
-        "minHeight": 490
+        "minWidth": 800,
+        "minHeight": 600
       }
     ],
     "security": {

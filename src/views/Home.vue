@@ -11,7 +11,6 @@ import ValueShow from '../components/Home/ValueShow.vue';
 const toast = useToast();
 
 const port = new PortUse();
-// const { sensorADCData, binValue } = port;
 
 onUnmounted(() => {
   port.forceClose();
@@ -32,12 +31,12 @@ port
 </script>
 
 <template>
-  <div class="p-5 h-full">
-    <div class="h-1/2 w-full flex justify-center items-center flex-col">
+  <div class="p-5 h-screen flex flex-col gap-5">
+    <div class="h-1/2 w-full flex items-center flex-col pb-5">
       <SerialConnect :port="port" />
       <SerialText :port="port" />
     </div>
-    <div class="flex w-full h-1/2 items-center">
+    <div class="flex h-1/2 w-full items-center">
       <SensorData :port="port" />
       <ValueShow :port="port" />
     </div>
