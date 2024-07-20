@@ -16,3 +16,9 @@ export const parseSensorADCPacket = (data: string): number[] => {
 
   return result;
 };
+
+export const getDateTime = (date: Date) => {
+  return [date.getHours(), date.getMinutes(), date.getSeconds()]
+    .map((x) => x.toString().padStart(2, '0'))
+    .join(':');
+};

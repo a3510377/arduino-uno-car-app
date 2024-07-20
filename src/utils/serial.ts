@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { InvokeArgs } from '@tauri-apps/api/tauri';
+import { EventEmitter, IBaseEvent } from './event';
 
 export const invokeSerialPlugin = <E extends SerialPluginCommandNames>(
   name: E,
@@ -17,22 +18,21 @@ export const closeAllPort = (): Promise<null> => {
   return invokeSerialPlugin('close_all_port', {});
 };
 
-export class SerialPort {
+export class SerialPort<
+  EV extends ISerialPortEvents = ISerialPortEvents
+> extends EventEmitter<EV> {
   isOpen: boolean = false;
-  settings: ISerialPortOptions;
+  protected reading: boolean = false;
+  protected serialPortName: string;
+  protected settings: ISerialPortOptions;
+  protected readConfig?: { size?: number; interval?: number };
 
-  private events: {
-    [K in keyof ISerialPortEvents]?: ((
-      ...options: ISerialPortEvents[K]
-    ) => void)[];
-  } = {};
-  private pluginEventUnListeners: Partial<IPluginEventUnListeners> = {};
+  protected pluginEventUnListeners: Partial<IPluginEventUnListeners> = {};
 
-  constructor(
-    public readonly portName: string,
-    options: Partial<ISerialPortOptions> = {}
-  ) {
+  constructor(portName: string, options: Partial<ISerialPortOptions> = {}) {
+    super();
     this.settings = { baudRate: 115200, ...options };
+    this.serialPortName = portName;
   }
 
   async open(): Promise<null> {
@@ -41,96 +41,117 @@ export class SerialPort {
     }
 
     const result = await invokeSerialPlugin('connect_port', {
-      portName: this.portName,
+      portName: this.serialPortName,
       ...this.settings,
     });
+
     this.isOpen = true;
-    listen(`plugin:serialport:disconnect-${this.portName}`, async () => {
+    listen(`plugin:serialport:disconnect-${this.serialPortName}`, async () => {
       this.isOpen = false;
       await this.close();
     });
+
+    if (this.readConfig) {
+      const { size, interval } = this.readConfig;
+
+      await this.startRead(size, interval);
+    }
+
+    this.emit('open');
     return result;
   }
 
   async startRead(size?: number, interval?: number): Promise<null> {
+    this.readConfig = { size, interval };
+
     await this._pluginReadEventRegister();
     return await invokeSerialPlugin('start_read_port', {
-      portName: this.portName,
+      portName: this.serialPortName,
       size,
       interval,
     });
   }
 
   async stopRead(): Promise<null> {
-    await invokeSerialPlugin('cancel_read_port', { portName: this.portName });
+    this.readConfig = undefined;
+
+    await invokeSerialPlugin('cancel_read_port', {
+      portName: this.serialPortName,
+    });
     this.cancelListen();
     return null;
   }
 
   async close(): Promise<null> {
-    if (this.isOpen) {
-      this.emit('close');
-      await this.forceClose();
-      this.isOpen = false;
-    }
+    await invokeSerialPlugin('close_port', {
+      portName: this.serialPortName,
+    }).catch(console.debug);
+
+    this.isOpen = false;
+
+    this.cancelListen();
+    this.emit('close');
+
     return null;
   }
 
   async forceClose(): Promise<null> {
-    await invokeSerialPlugin('close_port', {
-      portName: this.portName,
-    }).catch(console.debug);
-
-    this.isOpen = false;
-    this.cancelListen();
+    this.close();
+    this.readConfig = undefined;
     return null;
   }
 
-  addListener<K extends keyof ISerialPortEvents>(
-    name: K,
-    callback: (...options: ISerialPortEvents[K]) => void
-  ): void {
-    this.events[name] ||= [];
-    this.events[name].push(callback);
-  }
-
-  removeListener<K extends keyof ISerialPortEvents>(
-    name: K,
-    callback: (...options: ISerialPortEvents[K]) => void
-  ): void {
-    const events = this.events[name];
-    if (events) {
-      const index = events.indexOf(callback);
-      if (index !== -1) {
-        events.splice(index, 1);
-      }
-
-      if (!events.length) {
-        delete this.events[name];
-      }
-    }
-  }
-
-  removeAllListener(): void {
-    this.events = {};
-  }
-
-  emit<K extends keyof ISerialPortEvents>(
-    name: K,
-    ...options: ISerialPortEvents[K]
-  ): void {
-    this.events[name]?.forEach((cb) => cb(...options));
-  }
-
   cancelListen() {
+    this.reading = false;
+
     this.pluginEventUnListeners.bytesListen?.();
+    this.pluginEventUnListeners.bytesListen = undefined;
     this.pluginEventUnListeners.stringListen?.();
+    this.pluginEventUnListeners.stringListen = undefined;
+  }
+
+  async setPortName(portName: string) {
+    this.serialPortName = portName;
+    await this.forceClose();
+    await this.open();
+  }
+
+  async setBaudRate(baudRate?: number) {
+    this.settings.baudRate = baudRate;
+    await this.close();
+    await this.open();
+  }
+
+  async setDataBits(dataBits?: DataBitsType) {
+    this.settings.dataBits = dataBits;
+    await this.close();
+    await this.open();
+  }
+
+  async setParity(parity?: ParityType) {
+    this.settings.parity = parity;
+    await this.close();
+    await this.open();
+  }
+
+  async setStopBits(stopBits?: StopBitsType) {
+    this.settings.stopBits = stopBits;
+    await this.close();
+    await this.open();
+  }
+
+  async setFlowControl(flowControl?: FlowControlType) {
+    this.settings.flowControl = flowControl;
+    await this.close();
+    await this.open();
   }
 
   protected async _pluginReadEventRegister() {
+    this.reading = true;
+
     if (!this.pluginEventUnListeners.bytesListen) {
       this.pluginEventUnListeners.bytesListen = await listen<IReadData>(
-        `plugin:serialport:read-${this.portName}`,
+        `plugin:serialport:read-${this.serialPortName}`,
         ({ payload }) => {
           this.emit('received_bytes', new Uint8Array(payload.data));
         }
@@ -139,7 +160,7 @@ export class SerialPort {
 
     if (!this.pluginEventUnListeners.stringListen) {
       this.pluginEventUnListeners.stringListen = await listen<IReadData>(
-        `plugin:serialport:read-string-${this.portName}`,
+        `plugin:serialport:read-string-${this.serialPortName}`,
         ({ payload }) => {
           this.emit(
             'data',
@@ -158,7 +179,7 @@ export type DataBitsType = 5 | 6 | 7 | 8;
 export type ParityType = 'none' | 'odd' | 'even';
 export type StopBitsType = 1 | 2;
 
-export interface ISerialPortEvents {
+export interface ISerialPortEvents extends IBaseEvent {
   data: [string];
   received_bytes: [Uint8Array];
   open: [];

@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import PrimeVue from 'primevue/config';
 
 import Aura from '@primevue/themes/aura';
+import ToastService from 'primevue/toastservice';
 
 import 'primeicons/primeicons.css';
 
@@ -25,6 +26,7 @@ const router = createRouter({
 
 createApp(App)
   .use(PrimeVue, { theme: { preset: Aura } })
+  .use(ToastService)
   .use(pinia)
   .use(router)
   .mount('#app');

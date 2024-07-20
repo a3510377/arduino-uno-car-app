@@ -20,8 +20,10 @@
     "windows": [
       {
         "title": "Arduino Uno Car App",
-        "width": 800,
-        "height": 600
+        "width": 770,
+        "height": 490,
+        "minWidth": 770,
+        "minHeight": 490
       }
     ],
     "security": {
