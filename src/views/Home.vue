@@ -21,7 +21,7 @@ port
     toast.add({ severity: 'info', summary: '訊息', detail: msg, life: 3000 });
   })
   .on('alert_play', (i) => {
-    new Audio(`src/assets/audio/alert/${i}.wav`).play();
+    new Audio(`audio/alert/${i}.wav`).play();
     toast.add({
       severity: 'info',
       summary: '訊息',
