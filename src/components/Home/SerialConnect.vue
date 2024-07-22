@@ -1,35 +1,3 @@
-<script lang="ts" setup>
-import { ref } from 'vue';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-
-import { PortUse, useAvailablePorts } from '../../utils/serial-vue';
-import InputGroup from 'primevue/inputgroup';
-
-const inputValue = ref<string>();
-const { ports } = useAvailablePorts();
-const { port } = defineProps<{ port: PortUse }>();
-const { connected, connecting, portName } = port;
-
-const connect = () => {
-  if (!port.isOpen) {
-    port.connect();
-  } else {
-    port.close();
-  }
-};
-
-const write = async () => {
-  if (!port.isOpen) return;
-
-  if (inputValue.value) {
-    console.log(await port.write(inputValue.value));
-  }
-  inputValue.value = '';
-};
-</script>
-
 <template>
   <div class="h-1/6 w-full flex max-w-[40rem] max-h-11">
     <div class="w-full flex justify-between max-w-96">
@@ -42,6 +10,7 @@ const write = async () => {
         optionValue="port_name"
         placeholder="請選擇連線埠"
         class="w-full md:w-56"
+        overlayClass="select-none"
       />
 
       <Button
@@ -67,4 +36,34 @@ const write = async () => {
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<script lang="ts" setup>
+import { ref } from 'vue';
+import Select from 'primevue/select';
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import InputGroup from 'primevue/inputgroup';
+
+import { PortUse, useAvailablePorts } from '@/utils/serial-vue';
+
+const inputValue = ref<string>();
+const { ports } = useAvailablePorts();
+const { port } = defineProps<{ port: PortUse }>();
+const { connected, connecting, portName } = port;
+
+const connect = () => {
+  if (!port.isOpen) {
+    port.connect();
+  } else {
+    port.close();
+  }
+};
+
+const write = async () => {
+  if (!port.isOpen) return;
+
+  if (inputValue.value) {
+    console.log(await port.write(inputValue.value));
+  }
+  inputValue.value = '';
+};
+</script>

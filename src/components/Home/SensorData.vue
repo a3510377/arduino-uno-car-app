@@ -20,7 +20,7 @@
 </template>
 
 <script lang="ts" setup>
-import { PortUse } from '../../utils/serial-vue';
+import { PortUse } from '@/utils/serial-vue';
 
 const { port } = defineProps<{ port: PortUse }>();
 

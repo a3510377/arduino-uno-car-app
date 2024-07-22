@@ -1,42 +1,3 @@
-<script setup lang="ts">
-import { nextTick, onUnmounted, ref } from 'vue';
-
-import Button from 'primevue/button';
-import ButtonGroup from 'primevue/buttongroup';
-
-import { getDateTime } from '../../utils';
-import { PortUse } from '../../utils/serial-vue';
-
-const SPECIAL_RED_RE = /^alert((?:-(\d+))?|:.*)$/;
-const SPECIAL_YEL_RE =
-  /^((sen:([a-zA-Z0-9]{20})-([a-zA-Z0-9]{2}))|(value:[^:]+:[^:]*))$/;
-
-const { port } = defineProps<{ port: PortUse }>();
-
-const timeShow = ref<boolean>(true);
-const autoScroll = ref<boolean>(true);
-const showDown = ref<boolean>(false);
-const { lines } = port;
-const scrollContainer = ref<HTMLDivElement | null>(null);
-
-onUnmounted(() => {
-  port.forceClose();
-});
-
-const toDown = () => {
-  if (scrollContainer.value) {
-    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
-  }
-};
-
-port.on('new_line', async () => {
-  if (autoScroll.value) {
-    await nextTick(); // wait for dom update
-    toDown();
-  }
-});
-</script>
-
 <template>
   <div
     :class="[
@@ -118,6 +79,45 @@ port.on('new_line', async () => {
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { nextTick, onUnmounted, ref } from 'vue';
+
+import Button from 'primevue/button';
+import ButtonGroup from 'primevue/buttongroup';
+
+import { getDateTime } from '@/utils';
+import { PortUse } from '@/utils/serial-vue';
+
+const SPECIAL_RED_RE = /^alert((?:-(\d+))?|:.*)$/;
+const SPECIAL_YEL_RE =
+  /^((sen:([a-zA-Z0-9]{20})-([a-zA-Z0-9]{2}))|(value:[^:]+:[^:]*))$/;
+
+const { port } = defineProps<{ port: PortUse }>();
+
+const timeShow = ref<boolean>(true);
+const autoScroll = ref<boolean>(true);
+const showDown = ref<boolean>(false);
+const { lines } = port;
+const scrollContainer = ref<HTMLDivElement | null>(null);
+
+onUnmounted(() => {
+  port.forceClose();
+});
+
+const toDown = () => {
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+  }
+};
+
+port.on('new_line', async () => {
+  if (autoScroll.value) {
+    await nextTick(); // wait for dom update
+    toDown();
+  }
+});
+</script>
 
 <style scoped>
 .scroll::-webkit-scrollbar {

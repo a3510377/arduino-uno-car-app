@@ -25,7 +25,14 @@ const router = createRouter({
 });
 
 createApp(App)
-  .use(PrimeVue, { theme: { preset: Aura } })
+  .use(PrimeVue, {
+    theme: {
+      preset: Aura,
+      options: {
+        darkModeSelector: '.dark',
+      },
+    },
+  })
   .use(ToastService)
   .use(pinia)
   .use(router)
