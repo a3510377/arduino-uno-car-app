@@ -38,17 +38,7 @@ port
   .on('alert', (msg) => {
     toast.add({ severity: 'info', summary: '訊息', detail: msg, life: 3000 });
   })
-  .on('alert_play', (i) => {
-    new Audio(`/audio/alert/${i}.wav`).play();
-
-    toast.add({
-      severity: 'info',
-      summary: '訊息',
-      detail: `音訊播放中 - ${i}`,
-      life: 500,
-    });
-  })
-  .on('alert_custom_play', async (i) => {
+  .on('alert_play', async (i) => {
     console.time(`getAudio-${i}`);
     const sound = await setting.getAlertSoundAudio(i);
     console.timeEnd(`getAudio-${i}`);
@@ -68,7 +58,7 @@ port
     toast.add({
       severity: 'info',
       summary: '訊息',
-      detail: `音訊播放中 - ${i}`,
+      detail: `音訊播放中 - ${i} [${sound.description ?? '無'}]`,
       life: 500,
     });
     await audio.play();
