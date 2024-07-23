@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "arduino-uno-car-app",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "tauri": {
     "allowlist": {
@@ -15,12 +15,16 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["$APP/db", "$APP/db/**"]
       }
     },
     "windows": [
       {
         "title": "Arduino Uno Car App",
-        "width": 770,
+        "width": 1000,
         "height": 490,
         "minWidth": 800,
         "minHeight": 600
@@ -39,7 +43,16 @@
         "icons/128x128@2x.png",
         "icons/icon.icns",
         "icons/icon.ico"
-      ]
+      ],
+      "windows": {
+        "wix": {
+          "language": "zh-TW"
+        },
+        "nsis": {
+          "installMode": "currentUser",
+          "languages": ["TradChinese"]
+        }
+      }
     }
   }
 }
