@@ -89,7 +89,7 @@ import ButtonGroup from 'primevue/buttongroup';
 import { getDateTime } from '@/utils';
 import { PortUse } from '@/utils/serial-vue';
 
-const SPECIAL_RED_RE = /^alert((?:-(\d+))?|:.*)$/;
+const SPECIAL_RED_RE = /^alert((-((-[a-zA-Z0-9-_]+)|([a-zA-Z0-9-_]+)))?|:.*)$/;
 const SPECIAL_YEL_RE =
   /^((sen:([a-zA-Z0-9]{20})-([a-zA-Z0-9]{2}))|(value:[^:]+:[^:]*))$/;
 

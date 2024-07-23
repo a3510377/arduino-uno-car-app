@@ -15,6 +15,7 @@
 
       <Button
         type="button"
+        title="快捷鍵 - c"
         :label="connected ? '斷線' : '連線'"
         :loading="connecting"
         :disabled="!portName"
@@ -44,6 +45,7 @@ import InputText from 'primevue/inputtext';
 import InputGroup from 'primevue/inputgroup';
 
 import { PortUse, useAvailablePorts } from '@/utils/serial-vue';
+import { onKeyStroke } from '@vueuse/core';
 
 const inputValue = ref<string>();
 const { ports } = useAvailablePorts();
@@ -66,4 +68,6 @@ const write = async () => {
   }
   inputValue.value = '';
 };
+
+onKeyStroke('c', (_) => connect());
 </script>

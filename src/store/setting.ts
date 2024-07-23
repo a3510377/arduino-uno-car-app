@@ -15,6 +15,7 @@ import { ref, watch } from 'vue';
 const SETTING_PATH = 'db/settings.json';
 
 const AUDIO_CACHE: { [path: string]: Blob } = {};
+const AUDIO_NAME_TEST = /[a-zA-Z0-9-_]+/;
 
 export const useSetting = defineStore('video', () => {
   const alertSounds = ref<IAlertSoundMap>({});
@@ -37,7 +38,17 @@ export const useSetting = defineStore('video', () => {
     const json = await readTextFile(SETTING_PATH, { dir: BaseDirectory.App });
     const data = JSON.parse(json);
 
-    alertSounds.value = data.alertSounds;
+    alertSounds.value = data.alertSounds || {};
+    for (const sound of Object.values(alertSounds.value)) {
+      if (AUDIO_CACHE[sound.path]) {
+        continue;
+      }
+
+      const buffer = await readBinaryFile(sound.path, {
+        dir: BaseDirectory.App,
+      });
+      AUDIO_CACHE[sound.path] = new Blob([buffer], { type: sound.type });
+    }
   };
 
   load();
@@ -53,6 +64,9 @@ export const useSetting = defineStore('video', () => {
       name: string,
       blob: Blob
     ): Promise<boolean> {
+      if (!AUDIO_NAME_TEST.test(name)) {
+        return false;
+      }
       if (alertSounds.value[name]) {
         return false;
       }
@@ -146,6 +160,10 @@ export const useSetting = defineStore('video', () => {
     },
 
     editAlertSound(name: string, newName: string): boolean {
+      if (!AUDIO_NAME_TEST.test(newName)) {
+        return false;
+      }
+
       const oldSound = alertSounds.value[name];
       if (alertSounds.value[newName] || !oldSound) {
         return false;

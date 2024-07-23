@@ -10,6 +10,7 @@ import 'primeicons/primeicons.css';
 
 import './style.css';
 import App from './App.vue';
+import Ripple from 'primevue/ripple';
 
 const pinia = createPinia();
 
@@ -33,6 +34,7 @@ createApp(App)
       },
     },
   })
+  .directive('ripple', Ripple) // fix for vue-warn
   .use(ToastService)
   .use(pinia)
   .use(router)

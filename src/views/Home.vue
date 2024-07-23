@@ -22,8 +22,10 @@ import SensorData from '@/components/Home/SensorData.vue';
 import ValueShow from '@/components/Home/ValueShow.vue';
 import Setting from '@/components/Home/Setting.vue';
 import { PortUse } from '@/utils/serial-vue.ts';
+import { useSetting } from '@/store/setting';
 
 const toast = useToast();
+const setting = useSetting();
 
 const port = new PortUse();
 
@@ -43,5 +45,31 @@ port
       detail: `音訊播放中 - ${i}`,
       life: 500,
     });
+  })
+  .on('alert_custom_play', async (i) => {
+    console.time(`getAudio-${i}`);
+    const sound = await setting.getAlertSoundAudio(i);
+    console.timeEnd(`getAudio-${i}`);
+
+    if (!sound) {
+      console.log(`未找到音訊 ${i}`);
+      return;
+    }
+
+    if (sound.disable) {
+      console.log(`音訊已禁用，不播放 - ${i}`);
+      return;
+    }
+
+    const audio = new Audio(sound.url);
+    audio.volume = sound.volume;
+    toast.add({
+      severity: 'info',
+      summary: '訊息',
+      detail: `音訊播放中 - ${i}`,
+      life: 500,
+    });
+    await audio.play();
+    URL.revokeObjectURL(sound.url);
   });
 </script>

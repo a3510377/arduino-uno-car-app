@@ -118,9 +118,12 @@ export class PortUse extends SerialPort<IPortUseEvents> {
           } else if (line.startsWith('alert:')) {
             this.emit('alert', line.slice(6));
           } else {
-            const match = line.match(/^alert(?:-(\d+))?$/);
+            const match = line.match(
+              /^alert(?:-(?:(?:-(?<custom>[a-zA-Z0-9-_]+))|(?<default>[a-zA-Z0-9-_]+)))?$/
+            )?.groups;
             if (match) {
-              this.emit('alert_play', match[1] ?? '0');
+              if (match.custom) this.emit('alert_custom_play', match.custom);
+              else if (match.default) this.emit('alert_play', match.default);
             }
           }
 
@@ -174,6 +177,7 @@ export class PortUse extends SerialPort<IPortUseEvents> {
 export interface IPortUseEvents extends ISerialPortEvents {
   alert: [message: string];
   alert_play: [id: string];
+  alert_custom_play: [id: string];
   value: [name: string, value: string];
   sensor: [data: number[], bool: number];
   new_line: [text: string];
