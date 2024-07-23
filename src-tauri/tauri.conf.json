@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "arduino-uno-car-app",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "tauri": {
     "allowlist": {
@@ -24,7 +24,7 @@
     "windows": [
       {
         "title": "Arduino Uno Car App",
-        "width": 770,
+        "width": 1000,
         "height": 490,
         "minWidth": 800,
         "minHeight": 600

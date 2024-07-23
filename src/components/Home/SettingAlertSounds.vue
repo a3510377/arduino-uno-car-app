@@ -1,14 +1,15 @@
 <template>
   <TabPanel value="alert-sounds" class="h-full">
-    <input
-      class="h-8"
-      ref="audioFile"
-      type="file"
-      name=""
-      id=""
-      accept="audio/*"
-      @change="onFileSelect"
-    />
+    <div class="h-8">
+      <label for="file">添加語音: </label>
+      <input
+        ref="audioFile"
+        type="file"
+        name="file"
+        accept="audio/*"
+        @change="onFileSelect"
+      />
+    </div>
 
     <DataTable
       :value="Object.values(setting.alertSounds)"
@@ -33,9 +34,9 @@
           </div>
         </template>
       </Column>
-      <Column field="name" header="名稱">
+      <Column field="name" header="名稱" class="disable-center">
         <template #body="{ data }">
-          <div class="flex items-center justify-center">
+          <div class="flex items-center">
             <Button
               text
               rounded
@@ -43,7 +44,7 @@
               icon="pi pi-pen-to-square"
               iconClass="!text-[.8rem]"
               @click="editName(data)"
-              title="點擊改名"
+              title="點擊修改"
             />
             <p
               @click="copyText(data.name)"
@@ -52,6 +53,13 @@
             >
               {{ data.name }}
             </p>
+          </div>
+        </template>
+      </Column>
+      <Column field="description" header="描述" class="disable-center">
+        <template #body="{ data }">
+          <div class="flex items-center">
+            <p>{{ data.description }}</p>
           </div>
         </template>
       </Column>
@@ -110,7 +118,7 @@
     <Dialog
       :visible="!!startEditName"
       modal
-      header="修改名稱"
+      header="修改設定"
       :closeButtonProps="{
         text: true,
         rounded: true,
@@ -126,7 +134,17 @@
             class="flex-auto"
             autocomplete="off"
             v-model="name"
-            @keyup.enter="saveNewName"
+            @keyup.enter="saveEdit"
+          />
+        </div>
+        <div class="flex items-center gap-4 mb-8">
+          <label for="name" class="font-semibold w-24">描述</label>
+          <InputText
+            id="name"
+            class="flex-auto"
+            autocomplete="off"
+            v-model="description"
+            @keyup.enter="saveEdit"
           />
         </div>
         <div class="flex justify-end gap-2">
@@ -136,7 +154,7 @@
             severity="secondary"
             @click="startEditName = ''"
           />
-          <Button type="button" label="Save" @click="saveNewName" />
+          <Button type="button" label="Save" @click="saveEdit" />
         </div>
       </OnClickOutside>
     </Dialog>
@@ -171,6 +189,7 @@ const loadingAudio = ref<boolean>(false);
 const playingAudio = ref<boolean>(false);
 
 const name = ref<string>('');
+const description = ref<string>('');
 const startEditName = ref<string>('');
 
 const audioFile = ref<HTMLInputElement>();
@@ -224,6 +243,7 @@ const playOrPause = async (sound: IAlertSound) => {
     );
 
     audio.load();
+    audio.volume = sound.volume;
     await audio.play();
     URL.revokeObjectURL(playAudio.url);
   } catch (error) {
@@ -262,25 +282,39 @@ const editName = async (sound: IAlertSound) => {
   if (setting.alertSounds[sound.name]) {
     startEditName.value = sound.name;
     name.value = sound.name;
+    description.value = sound.description || '';
   }
 };
 
-const saveNewName = () => {
-  if (startEditName.value && startEditName.value !== name.value) {
-    if (setting.editAlertSound(startEditName.value, name.value)) {
+const saveEdit = () => {
+  if (startEditName.value) {
+    const sound = setting.alertSounds[startEditName.value];
+    const oldDescription = sound.description;
+    if (oldDescription !== description.value) {
+      sound.description = description.value || void 0;
       toast.add({
         severity: 'success',
         summary: '成功',
-        detail: `修改 ${startEditName.value} -> ${name.value} 成功`,
+        detail: `修改 ${startEditName.value} 描述成功`,
         life: 1500,
       });
-    } else {
-      toast.add({
-        severity: 'error',
-        summary: '失敗',
-        detail: `修改 ${startEditName.value} -> ${name.value} 失敗`,
-        life: 1500,
-      });
+    }
+    if (startEditName.value !== name.value) {
+      if (setting.editAlertSoundName(startEditName.value, name.value)) {
+        toast.add({
+          severity: 'success',
+          summary: '成功',
+          detail: `修改 ${startEditName.value} -> ${name.value} 成功`,
+          life: 1500,
+        });
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: '失敗',
+          detail: `修改 ${startEditName.value} -> ${name.value} 失敗`,
+          life: 1500,
+        });
+      }
     }
   }
   startEditName.value = '';
@@ -288,7 +322,10 @@ const saveNewName = () => {
 </script>
 
 <style scoped>
-:deep(.p-datatable-column-header-content) {
+:deep(
+    .p-datatable-header-cell:not(.disable-center)
+      .p-datatable-column-header-content
+  ) {
   justify-content: center;
 }
 </style>

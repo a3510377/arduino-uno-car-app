@@ -77,7 +77,9 @@ export const useSetting = defineStore('video', () => {
       });
 
       let path;
-      const ext = filename.split('.').pop();
+      const names = filename.split('.');
+      const ext = names.pop();
+      const oldFileName = names.join('.');
       do {
         path = `db/alert-sounds/${makeID(20)}.${ext}`;
       } while (await exists(path, { dir: BaseDirectory.App }));
@@ -101,6 +103,7 @@ export const useSetting = defineStore('video', () => {
       alertSounds.value[name] = {
         name,
         path,
+        description: oldFileName,
         type: blob.type,
         size,
         volume: 1,
@@ -159,7 +162,7 @@ export const useSetting = defineStore('video', () => {
       };
     },
 
-    editAlertSound(name: string, newName: string): boolean {
+    editAlertSoundName(name: string, newName: string): boolean {
       if (!AUDIO_NAME_TEST.test(newName)) {
         return false;
       }
@@ -180,6 +183,7 @@ export const useSetting = defineStore('video', () => {
 
 export interface IAlertSound {
   name: string;
+  description?: string;
   path: string;
   type: string;
   size: number;
