@@ -25,7 +25,7 @@ export const useSetting = defineStore('video', () => {
 
     const json = JSON.stringify({
       alertSounds: alertSounds.value,
-    });
+    } as ISettings);
 
     await writeTextFile(SETTING_PATH, json, { dir: BaseDirectory.App });
   };
@@ -36,7 +36,7 @@ export const useSetting = defineStore('video', () => {
     }
 
     const json = await readTextFile(SETTING_PATH, { dir: BaseDirectory.App });
-    const data = JSON.parse(json);
+    const data: ISettings = JSON.parse(json);
 
     alertSounds.value = data.alertSounds || {};
     for (const sound of Object.values(alertSounds.value)) {
@@ -62,7 +62,8 @@ export const useSetting = defineStore('video', () => {
     async addAlertSound(
       filename: string,
       name: string,
-      blob: Blob
+      blob: Blob,
+      options?: IAddAlertSoundOptions
     ): Promise<boolean> {
       if (!AUDIO_NAME_TEST.test(name)) {
         return false;
@@ -103,11 +104,11 @@ export const useSetting = defineStore('video', () => {
       alertSounds.value[name] = {
         name,
         path,
-        description: oldFileName,
         type: blob.type,
         size,
-        volume: 1,
-        disable: false,
+        volume: options?.volume ?? 1,
+        disable: options?.disable ?? false,
+        description: options?.description ?? oldFileName,
       };
       return true;
     },
@@ -181,18 +182,32 @@ export const useSetting = defineStore('video', () => {
   };
 });
 
-export interface IAlertSound {
-  name: string;
+export interface IAlertSoundMap {
+  [key: string]: IAlertSound;
+}
+
+export interface ISettings {
+  alertSounds: IAlertSoundMap;
+}
+
+export interface IExtendsSettings {
+  alertSounds: { [key: string]: IExtendsAlertSound };
+}
+
+export interface IAddAlertSoundOptions {
   description?: string;
-  path: string;
-  type: string;
-  size: number;
   volume: number;
   disable: boolean;
 }
 
-export interface IAlertSoundMap {
-  [key: string]: IAlertSound;
+export interface IExtendsAlertSound extends IAddAlertSoundOptions {
+  name: string;
+  type: string;
+  path: string;
+}
+
+export interface IAlertSound extends IExtendsAlertSound {
+  size: number;
 }
 
 export interface IPlayAlertSound extends IAlertSound {

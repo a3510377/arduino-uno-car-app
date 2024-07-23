@@ -9,6 +9,10 @@
           <i class="pi pi-headphones mr-1" />
           警告音
         </Tab>
+        <Tab value="import-setting">
+          <i class="pi pi-upload mr-1" />
+          匯入設定
+        </Tab>
         <div class="absolute top-2 right-2">
           <Button
             icon="pi pi-times"
@@ -20,6 +24,7 @@
       </TabList>
       <TabPanels class="h-[calc(100%-3.5rem)]">
         <SettingAlertSounds />
+        <SettingImport />
       </TabPanels>
     </Tabs>
   </div>
@@ -32,7 +37,9 @@ import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import TabPanels from 'primevue/tabpanels';
+
 import SettingAlertSounds from './SettingAlertSounds.vue';
+import SettingImport from './SettingImport.vue';
 
 import Button from 'primevue/button';
 

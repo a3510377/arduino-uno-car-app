@@ -6,23 +6,64 @@ on:
       - release
   workflow_dispatch:
 
-# This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
+# `tauri-action` can also upload app bundles to an existing GitHub release.
+# This workflow uses different actions to create and publish the release.
+# `tauri-action` will only build and upload the app bundles to the specified release.
 
 jobs:
-  publish-tauri:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create-release.outputs.id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: get version
+        run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
+      - name: Package Extends
+        run: |
+          zip -r Extends-Setting.zip extends
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        id: create-release
+        env:
+          PACKAGE_VERSION: ${{ env.PACKAGE_VERSION }}
+        with:
+          files: Extends-Setting.zip
+          # note you'll typically need to create a personal access token
+          # with permissions to create releases in the other repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Desktop App v${{ env.PACKAGE_VERSION }}
+          tag_name: v${{ env.PACKAGE_VERSION }}
+          body: Take a look at the assets to download and install this app.
+          draft: true
+          prerelease: false
+
+  build-tauri:
+    needs: create-release
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest # for Arm based macs (M1 and above).
-            args: --target aarch64-apple-darwin
-          - platform: macos-latest # for Intel based macs.
-            args: --target x86_64-apple-darwin
-          - platform: ubuntu-22.04 # for Tauri v1 you could replace this with ubuntu-20.04.
+          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest' # for Intel based macs.
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
             args: ''
-          - platform: windows-latest
+          - platform: 'windows-latest'
             args: ''
 
     runs-on: ${{ matrix.platform }}
@@ -69,23 +110,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: v__VERSION__
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
 
-  publish-extends:
+  publish-release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    needs: [create-release, build-tauri]
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Package Extends
-        run: |
-          zip -r Extends-Setting.zip extends
-
-      - name: Release Extends
-        uses: softprops/action-gh-release@v2
+      - name: publish release
+        id: publish-release
+        uses: actions/github-script@v6
+        env:
+          release_id: ${{ needs.create-release.outputs.release_id }}
         with:
-          files: Extends-Setting.zip
+          script: |
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: false,
+              prerelease: false
+            });
