@@ -118,10 +118,9 @@ export class PortUse extends SerialPort<IPortUseEvents> {
           } else if (line.startsWith('alert:')) {
             this.emit('alert', line.slice(6));
           } else {
-            const match = line.match(/^alert(?:-(?<custom>[a-zA-Z0-9-_]+))?$/)
-              ?.groups?.custom;
+            const match = line.match(/^alert(?:-(\d+))?$/);
             if (match) {
-              this.emit('alert_play', match);
+              this.emit('alert_play', match[1] ?? '0');
             }
           }
 

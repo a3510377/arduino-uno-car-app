@@ -22,25 +22,3 @@ export const getDateTime = (date: Date) => {
     .map((x) => x.toString().padStart(2, '0'))
     .join(':');
 };
-
-export const formatDuration = (duration: number): string => {
-  const ms = Math.floor((duration % 1) * 1000)
-    .toString()
-    .padStart(3, '0');
-
-  return (
-    [duration / 3600, (duration % 3600) / 60, duration % 60]
-      .map((x) => Math.floor(x).toString().padStart(2, '0'))
-      .join(':') + `:${ms}`
-  );
-};
-
-export const makeID = (length: number) => {
-  const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const charactersLength = characters.length;
-  return Array.from(
-    { length },
-    () => characters[Math.floor(Math.random() * charactersLength)]
-  ).join('');
-};
