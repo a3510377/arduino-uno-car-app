@@ -14,7 +14,7 @@ import { ref, watch } from 'vue';
 
 const SETTING_PATH = 'db/settings.json';
 
-const AUDIO_CACHE: { [key: string]: Blob } = {};
+const AUDIO_CACHE: { [path: string]: Blob } = {};
 
 export const useSetting = defineStore('video', () => {
   const alertSounds = ref<IAlertSoundMap>({});
@@ -103,6 +103,7 @@ export const useSetting = defineStore('video', () => {
 
       await removeFile(sound.path, { dir: BaseDirectory.App });
       delete alertSounds.value[name];
+      delete AUDIO_CACHE[sound.path];
 
       return true;
     },
@@ -142,6 +143,17 @@ export const useSetting = defineStore('video', () => {
         url: blobUrl,
         close: () => URL.revokeObjectURL(blobUrl),
       };
+    },
+
+    editAlertSound(name: string, newName: string): boolean {
+      const oldSound = alertSounds.value[name];
+      if (alertSounds.value[newName] || !oldSound) {
+        return false;
+      }
+
+      alertSounds.value[newName] = { ...oldSound, name: newName };
+      delete alertSounds.value[name];
+      return true;
     },
 
     alertSounds,

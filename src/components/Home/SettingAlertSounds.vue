@@ -16,28 +16,33 @@
     >
       <Column>
         <template #body="{ data }">
-          <Button
-            :icon="
-              data.name === customAudio && playingAudio
-                ? 'pi pi-pause'
-                : 'pi pi-play'
-            "
-            :severity="data.name === customAudio && playingAudio ? 'warn' : ''"
-            rounded
-            :loading="data.name === customAudio && loadingAudio"
-            @click="playOrPause(data)"
-          />
+          <div class="flex items-center justify-center">
+            <Button
+              :icon="
+                data.name === customAudio && playingAudio
+                  ? 'pi pi-pause'
+                  : 'pi pi-play'
+              "
+              :severity="
+                data.name === customAudio && playingAudio ? 'warn' : ''
+              "
+              rounded
+              :loading="data.name === customAudio && loadingAudio"
+              @click="playOrPause(data)"
+            />
+          </div>
         </template>
       </Column>
-      <Column field="name" header="ID">
+      <Column field="name" header="名稱">
         <template #body="{ data }">
-          <div class="flex items-center">
+          <div class="flex items-center justify-center">
             <Button
               text
               rounded
+              class="mr-1"
               icon="pi pi-pen-to-square"
               iconClass="!text-[.8rem]"
-              @click="playOrPause(data)"
+              @click="editName(data)"
               title="點擊改名"
             />
             <p
@@ -52,21 +57,102 @@
       </Column>
       <Column field="size" header="長度">
         <template #body="{ data }">
-          {{ formatDuration(data.size) }}
+          <div class="flex items-center justify-center">
+            {{ formatDuration(data.size) }}
+          </div>
+        </template>
+      </Column>
+      <Column field="volume" header="音量">
+        <template #body="{ data }">
+          <div class="flex items-center justify-center gap-5">
+            <Slider
+              v-model="data.volume"
+              :step="0.01"
+              :min="0"
+              :max="1"
+              class="w-36"
+              :disabled="data.disable"
+            />
+            <InputNumber
+              v-model="data.volume"
+              inputClass="w-24"
+              :min="0"
+              :max="1"
+              :step="0.01"
+              showButtons
+              :disabled="data.disable"
+            />
+          </div>
+        </template>
+      </Column>
+      <Column field="disable" header="禁用">
+        <template #body="{ data }">
+          <div class="flex items-center justify-center">
+            <Checkbox v-model="data.disable" :binary="true" />
+          </div>
+        </template>
+      </Column>
+      <Column field="disable" header="刪除">
+        <template #body="{ data }">
+          <div class="flex items-center justify-center">
+            <Button
+              icon="pi pi-trash"
+              severity="danger"
+              text
+              rounded
+              @click="setting.removeAlertSound(data.name)"
+            />
+          </div>
         </template>
       </Column>
     </DataTable>
 
-    <Dialog></Dialog>
+    <Dialog
+      :visible="!!startEditName"
+      modal
+      header="修改名稱"
+      :closeButtonProps="{
+        text: true,
+        rounded: true,
+        severity: 'secondary',
+        onClick: () => (startEditName = ''),
+      }"
+    >
+      <OnClickOutside @trigger="startEditName = ''">
+        <div class="flex items-center gap-4 mb-8">
+          <label for="name" class="font-semibold w-24">名稱</label>
+          <InputText
+            id="name"
+            class="flex-auto"
+            autocomplete="off"
+            v-model="name"
+            @keyup.enter="saveNewName"
+          />
+        </div>
+        <div class="flex justify-end gap-2">
+          <Button
+            type="button"
+            label="Cancel"
+            severity="secondary"
+            @click="startEditName = ''"
+          />
+          <Button type="button" label="Save" @click="saveNewName" />
+        </div>
+      </OnClickOutside>
+    </Dialog>
   </TabPanel>
 </template>
 
 <script lang="ts" setup>
 import { ref, onUnmounted } from 'vue';
 
+import Slider from 'primevue/slider';
 import Dialog from 'primevue/dialog';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
+import InputText from 'primevue/inputtext';
+import TabPanel from 'primevue/tabpanel';
+import Checkbox from 'primevue/checkbox';
 
 import { useToast } from 'primevue/usetoast';
 
@@ -74,14 +160,18 @@ import { makeID, formatDuration } from '@/utils';
 import { IAlertSound, useSetting } from '@/store/setting';
 import { useClipboard } from '@vueuse/core';
 import Button from 'primevue/button';
+import { OnClickOutside } from '@vueuse/components';
+import InputNumber from 'primevue/inputnumber';
 
 const setting = useSetting();
 
 const toast = useToast();
-const name = ref<string>('test');
 const customAudio = ref<string>('');
 const loadingAudio = ref<boolean>(false);
 const playingAudio = ref<boolean>(false);
+
+const name = ref<string>('');
+const startEditName = ref<string>('');
 
 const audioFile = ref<HTMLInputElement>();
 const { copy } = useClipboard();
@@ -167,4 +257,38 @@ const copyText = (text: string) => {
     life: 1500,
   });
 };
+
+const editName = async (sound: IAlertSound) => {
+  if (setting.alertSounds[sound.name]) {
+    startEditName.value = sound.name;
+    name.value = sound.name;
+  }
+};
+
+const saveNewName = () => {
+  if (startEditName.value && startEditName.value !== name.value) {
+    if (setting.editAlertSound(startEditName.value, name.value)) {
+      toast.add({
+        severity: 'success',
+        summary: '成功',
+        detail: `修改 ${startEditName.value} -> ${name.value} 成功`,
+        life: 1500,
+      });
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: '失敗',
+        detail: `修改 ${startEditName.value} -> ${name.value} 失敗`,
+        life: 1500,
+      });
+    }
+  }
+  startEditName.value = '';
+};
 </script>
+
+<style scoped>
+:deep(.p-datatable-column-header-content) {
+  justify-content: center;
+}
+</style>
