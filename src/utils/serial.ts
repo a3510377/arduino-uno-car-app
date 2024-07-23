@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { InvokeArgs } from '@tauri-apps/api/tauri';
-
 import { EventEmitter, IBaseEvent } from './event';
 
 export const invokeSerialPlugin = <E extends SerialPluginCommandNames>(

@@ -16,8 +16,7 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
-
-import { PortUse } from '@/utils/serial-vue';
+import { PortUse } from '../../utils/serial-vue';
 
 const { port } = defineProps<{ port: PortUse }>();
 const { valueData } = port;
