@@ -1,5 +1,12 @@
 <template>
   <div class="fixed top-5 right-5">
+    <Button
+      icon="pi pi-thumbtack"
+      text
+      rounded
+      :class="{ '!text-gray-500': top }"
+      @click="top = !top"
+    />
     <Button icon="pi pi-cog" text rounded @click="showSetting = true" />
   </div>
   <div class="fixed inset-5" v-if="showSetting">
@@ -31,7 +38,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
+import { appWindow } from '@tauri-apps/api/window';
 
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
@@ -44,4 +52,8 @@ import SettingImport from './SettingImport.vue';
 import Button from 'primevue/button';
 
 const showSetting = ref<boolean>(false);
+const top = ref<boolean>(false);
+
+onMounted(() => appWindow.setAlwaysOnTop(top.value));
+watch(top, (newVal) => appWindow.setAlwaysOnTop(newVal));
 </script>
