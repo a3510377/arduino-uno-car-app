@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "arduino-uno-car-app",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "tauri": {
     "allowlist": {
@@ -19,6 +19,9 @@
       "fs": {
         "all": true,
         "scope": ["$APP/db", "$APP/db/**"]
+      },
+      "window": {
+        "setAlwaysOnTop": true
       }
     },
     "windows": [
@@ -53,6 +56,14 @@
           "languages": ["TradChinese"]
         }
       }
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/a3510377/arduino-uno-car-app/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwNTM4QzMyMTUwNTQzQjcKUldTM1F3VVZNb3hUWUJZcnBMRjM2UnIvZEVkL3ZnS3RQZzAzQmhtM2xuTzNJMytsV1NvVkdWa3kK"
     }
   }
 }
