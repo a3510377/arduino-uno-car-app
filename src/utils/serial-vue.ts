@@ -1,3 +1,4 @@
+import { diffJson } from 'diff';
 import { Ref, ref, watch } from 'vue';
 import { useIntervalFn } from '@vueuse/core';
 
@@ -20,8 +21,12 @@ export const useAvailablePorts = (interval: number = 1000) => {
         return [];
       });
 
-      ports.value = {};
-      newPorts.forEach((value) => (ports.value[value.port_name] = value));
+      if (diffJson(Object.values(ports.value), newPorts).length - 1) {
+        const newPortsCache: Record<string, IPortInfo> = {};
+        newPorts.forEach((value) => (newPortsCache[value.port_name] = value));
+
+        ports.value = newPortsCache;
+      }
     },
     interval,
     { immediate: true }

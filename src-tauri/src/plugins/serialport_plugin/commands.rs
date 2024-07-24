@@ -50,28 +50,43 @@ pub fn available_ports() -> Vec<PortInfo> {
                 SerialPortType::BluetoothPort => ("bluetooth".to_string(), None, None),
                 SerialPortType::Unknown => ("unknown".to_string(), None, None),
             };
-            let port_tag = match &i.port_type {
-                SerialPortType::UsbPort(usb) => {
-                    let re = Regex::new(r" *\(COM\d+\) *$").unwrap();
 
+            let show_name = if let SerialPortType::UsbPort(usb) = &i.port_type {
+                let re = Regex::new(r" *\(COM\d+\) *$").unwrap();
+                format!(
+                    "{} [{}]",
+                    i.port_name,
                     re.replace_all(
                         usb.product
                             .clone()
                             .unwrap_or_else(|| port_type.clone())
                             .as_str(),
-                        "",
+                        ""
                     )
-                    .to_string()
-                }
-                _ => port_type.clone(),
+                )
+            } else {
+                format!("{} [{}]", i.port_name, port_type.clone())
             };
 
-            PortInfo {
-                port_name: i.port_name.clone(),
-                show_name: format!("{} [{}]", i.port_name, port_tag),
-                port_type: port_type.clone(),
-                manufacturer,
-                product,
+            match &i.port_type {
+                SerialPortType::UsbPort(usb) => PortInfo {
+                    port_name: i.port_name.clone(),
+                    show_name,
+                    port_type: port_type.clone(),
+                    manufacturer,
+                    product,
+                    vid_pid: Some(format!("{:04x}:{:04x}", usb.vid, usb.pid)),
+                    serial_number: usb.serial_number.clone(),
+                },
+                _ => PortInfo {
+                    port_name: i.port_name.clone(),
+                    show_name,
+                    port_type: port_type.clone(),
+                    manufacturer,
+                    product,
+                    serial_number: Option::None,
+                    vid_pid: Option::None,
+                },
             }
         })
         .collect()

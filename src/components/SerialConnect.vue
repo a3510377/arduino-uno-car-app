@@ -38,7 +38,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, watch } from 'vue';
 import { register, unregister } from '@tauri-apps/api/globalShortcut';
 import { ref } from 'vue';
 import Select from 'primevue/select';
@@ -49,6 +49,7 @@ import { useToast } from 'primevue/usetoast';
 import { onKeyStroke } from '@vueuse/core';
 
 import { PortUse, useAvailablePorts } from '@/utils/serial-vue';
+import { findUnoPort } from '@/utils';
 
 const toast = useToast();
 const inputValue = ref<string>();
@@ -81,6 +82,22 @@ const write = async () => {
 
   inputValue.value = '';
 };
+
+watch(ports, async () => {
+  const oldPortName = portName.value;
+  if (!oldPortName || !ports.value[oldPortName]) {
+    const autoPort = await findUnoPort();
+    if (!autoPort) return;
+
+    portName.value = autoPort.port_name;
+    toast.add({
+      severity: 'info',
+      summary: '自動選擇連線埠',
+      detail: `已自動選擇連線埠 ${autoPort.show_name}`,
+      life: 1500,
+    });
+  }
+});
 
 onMounted(async () => {
   await unregister('CommandOrControl+Alt+C');

@@ -226,10 +226,19 @@ export interface ISerialPortOptions {
 }
 
 export interface IPortInfo {
+  /** Vendor ID:Product ID */
+  vid_pid?: string;
+  /** Vendor name (arbitrary string) */
   port_name: string;
-  show_name: string;
+  /** Port type (e.g., "usb", "bluetooth", etc.) */
   port_type: 'usb' | 'pci' | 'bluetooth' | 'unknown';
+  /** Serial number (arbitrary string) */
+  serial_number?: string;
+  /** Port location (e.g., "COM4 [Arduino Uno]", "COM4 [USB-SERIAL CH340]", etc.) */
+  show_name: string;
+  /** Manufacturer (arbitrary string) */
   manufacturer?: string;
+  /** Product name (arbitrary string) */
   product?: string;
 }
 

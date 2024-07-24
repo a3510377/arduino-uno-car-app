@@ -19,10 +19,18 @@ pub struct SerialPortState {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct PortInfo {
+    /// Vendor ID:Product ID
+    pub vid_pid: Option<String>,
+    /// Vendor name (arbitrary string)
     pub port_name: String,
+    /// Port type (e.g., "usb", "bluetooth", etc.)
     pub port_type: String,
+    /// Serial number (arbitrary string)
+    pub serial_number: Option<String>,
     pub show_name: String,
+    /// Manufacturer (arbitrary string)
     pub manufacturer: Option<String>,
+    /// Product name (arbitrary string)
     pub product: Option<String>,
 }
 
