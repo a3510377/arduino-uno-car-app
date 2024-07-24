@@ -103,9 +103,6 @@ jobs:
       - name: install frontend dependencies
         run: yarn install # change this to npm, pnpm or bun depending on which one you use.
 
-      - name: Remove old bundle
-        run: rm -rf src-tauri/target/*-apple-darwin/release/bundle src-tauri/target/release/bundle
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -115,17 +112,14 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
 
-      - name: Remove bundle to cache
-        env:
-          RUNNER_OS: ${{ matrix.platform }}
+      - name: Clean up bundles on Ubuntu and macOS
+        if: matrix.platform != 'windows-latest'
         run: |
-          if [[ "$RUNNER_OS" == "windows-latest" ]]; then
-            Remove-Item -Recurse -Force src-tauri\target\*-apple-darwin\release\bundle
-            Remove-Item -Recurse -Force src-tauri\target\release\bundle
-          else
-            rm -rf src-tauri/target/*-apple-darwin/release/bundle src-tauri/target/release/bundle
-          fi
-        shell: bash
+          rm -rf src-tauri/target/*-apple-darwin/release/bundle src-tauri/target/release/bundle
+
+      - name: Clean up bundles on Windows
+        if: matrix.platform == 'windows-latest'
+        run: Remove-Item -Recurse -Force src-tauri/target/release/bundle
 
   publish-release:
     permissions:
