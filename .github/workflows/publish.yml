@@ -1,9 +1,6 @@
 name: publish
 
 on:
-  push:
-    branches:
-      - release
   workflow_dispatch:
 
 # `tauri-action` can also upload app bundles to an existing GitHub release.
@@ -57,13 +54,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+          - platform: macos-latest # for Arm based macs (M1 and above).
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
+          - platform: macos-latest # for Intel based macs.
             args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
+          - platform: ubuntu-22.04 # for Tauri v1 you could replace this with ubuntu-20.04.
             args: ''
-          - platform: 'windows-latest'
+          - platform: windows-latest
             args: ''
 
     runs-on: ${{ matrix.platform }}
@@ -119,7 +116,14 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Remove bundle to cache
-        run: rm -rf src-tauri/target/*-apple-darwin/release/bundle src-tauri/target/release/bundle
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            Remove-Item -Recurse -Force src-tauri\target\*-apple-darwin\release\bundle
+            Remove-Item -Recurse -Force src-tauri\target\release\bundle
+          else
+            rm -rf src-tauri/target/*-apple-darwin/release/bundle src-tauri/target/release/bundle
+          fi
+        shell: bash
 
   publish-release:
     permissions:
