@@ -116,8 +116,10 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Remove bundle to cache
+        env:
+          RUNNER_OS: ${{ matrix.platform }}
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
+          if [[ "$RUNNER_OS" == "windows-latest" ]]; then
             Remove-Item -Recurse -Force src-tauri\target\*-apple-darwin\release\bundle
             Remove-Item -Recurse -Force src-tauri\target\release\bundle
           else
