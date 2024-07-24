@@ -22,6 +22,9 @@
       },
       "window": {
         "setAlwaysOnTop": true
+      },
+      "globalShortcut": {
+        "all": true
       }
     },
     "windows": [

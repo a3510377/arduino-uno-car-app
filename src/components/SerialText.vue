@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import Button from 'primevue/button';
 import ButtonGroup from 'primevue/buttongroup';
@@ -100,10 +100,6 @@ const autoScroll = ref<boolean>(true);
 const showDown = ref<boolean>(false);
 const { lines } = port;
 const scrollContainer = ref<HTMLDivElement | null>(null);
-
-onUnmounted(() => {
-  port.forceClose();
-});
 
 const toDown = () => {
   if (scrollContainer.value) {

@@ -15,14 +15,16 @@
 
 <script setup lang="ts">
 import { onUnmounted } from 'vue';
+import { unregisterAll } from '@tauri-apps/api/globalShortcut';
+
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 
-import SerialText from '@/components/Home/SerialText.vue';
-import SerialConnect from '@/components/Home/SerialConnect.vue';
-import SensorData from '@/components/Home/SensorData.vue';
-import ValueShow from '@/components/Home/ValueShow.vue';
-import Setting from '@/components/Home/Setting.vue';
+import SerialText from '@/components/SerialText.vue';
+import SerialConnect from '@/components/SerialConnect.vue';
+import SensorData from '@/components/SensorData.vue';
+import ValueShow from '@/components/ValueShow.vue';
+import Setting from '@/components/Setting.vue';
 import { PortUse } from '@/utils/serial-vue.ts';
 import { useSetting } from '@/store/setting';
 
@@ -31,8 +33,9 @@ const setting = useSetting();
 
 const port = new PortUse();
 
-onUnmounted(() => {
+onUnmounted(async () => {
   port.forceClose();
+  await unregisterAll();
 });
 port
   .on('alert', (msg) => {
