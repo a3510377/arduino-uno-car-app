@@ -13,26 +13,23 @@ import { parseSensorADCPacket } from './format';
 
 export const useAvailablePorts = (interval: number = 1000) => {
   const ports = ref<Record<string, IPortInfo>>({});
+  const update = async () => {
+    const newPorts = await availablePorts().catch((e) => {
+      console.error(e);
+      return [];
+    });
 
-  const pausable = useIntervalFn(
-    async () => {
-      const newPorts = await availablePorts().catch((e) => {
-        console.error(e);
-        return [];
-      });
+    if (diffJson(Object.values(ports.value), newPorts).length - 1) {
+      const newPortsCache: Record<string, IPortInfo> = {};
+      newPorts.forEach((value) => (newPortsCache[value.port_name] = value));
 
-      if (diffJson(Object.values(ports.value), newPorts).length - 1) {
-        const newPortsCache: Record<string, IPortInfo> = {};
-        newPorts.forEach((value) => (newPortsCache[value.port_name] = value));
+      ports.value = newPortsCache;
+    }
+  };
 
-        ports.value = newPortsCache;
-      }
-    },
-    interval,
-    { immediate: true }
-  );
+  const pausable = useIntervalFn(update, interval, { immediate: true });
 
-  return { ports, pausable };
+  return { ports, pausable, forceUpdate: update };
 };
 
 export class PortUse extends SerialPort<IPortUseEvents> {
