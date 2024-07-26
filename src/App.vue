@@ -26,7 +26,7 @@ import SerialText from '@/components/SerialText.vue';
 import SerialConnect from '@/components/SerialConnect.vue';
 import SensorData from '@/components/SensorData.vue';
 import ValueShow from '@/components/ValueShow.vue';
-import Setting from '@/components/setting/index.vue';
+import Setting from '@/components/setting/SettingIndex.vue';
 import { PortUse } from '@/utils/serial-vue.ts';
 import { useSetting } from '@/store/setting';
 

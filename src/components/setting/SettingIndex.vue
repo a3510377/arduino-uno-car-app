@@ -51,7 +51,7 @@ import TabPanels from 'primevue/tabpanels';
 
 import SettingAlertSounds from './AlertSounds.vue';
 import SettingShortcutKey from './ShortcutKey.vue';
-import SettingImport from './Import.vue';
+import SettingImport from './SettingImport.vue';
 
 import Button from 'primevue/button';
 

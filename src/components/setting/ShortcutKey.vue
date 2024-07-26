@@ -26,7 +26,7 @@
       <Column field="key" header="快捷鍵">
         <template #body="{ data }">
           <div class="flex">
-            <div v-for="(key, i) in data.key.split('+')" class="flex">
+            <div v-for="(key, i) in data.key.split('+')" class="flex" :key="i">
               <strong>{{ key }}</strong>
               <p v-if="i < data.key.split('+').length - 1">+</p>
             </div>
