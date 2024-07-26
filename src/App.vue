@@ -11,7 +11,7 @@
       <ValueShow :port="port" />
     </div>
   </div>
-  <span class="fixed bottom-5 left-5 select-none">v{{ version }}</span>
+  <span class="fixed bottom-5 left-5 select-none -z-10">v{{ version }}</span>
 </template>
 
 <script setup lang="ts">

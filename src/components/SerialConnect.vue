@@ -41,8 +41,11 @@
 </template>
 
 <script lang="ts" setup>
+import { storeToRefs } from 'pinia';
 import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { Mutex } from 'async-mutex';
 import { register, unregister } from '@tauri-apps/api/globalShortcut';
+
 import Select from 'primevue/select';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -51,14 +54,22 @@ import { useToast } from 'primevue/usetoast';
 
 import { PortUse, useAvailablePorts } from '@/utils/serial-vue';
 import { findUnoPort } from '@/utils';
-import { IShortKeyActionMap, useSetting } from '@/store/setting';
+import {
+  IShortKeyActionID,
+  IShortKeyBaseAction,
+  useSetting,
+} from '@/store/setting';
+
+const { port } = defineProps<{ port: PortUse }>();
+const { connected, connecting, portName } = port;
 
 const toast = useToast();
 const settings = useSetting();
-const inputValue = ref<string>();
 const { ports, forceUpdate } = useAvailablePorts();
-const { port } = defineProps<{ port: PortUse }>();
-const { connected, connecting, portName } = port;
+
+const inputValue = ref<string>();
+const { systemShortKeysMap, sendMsgShortKeysMap } = storeToRefs(settings);
+const shortKeyMutex = new Mutex();
 
 const connect = async () => {
   if (port.isOpen) return;
@@ -129,14 +140,6 @@ enum ConnectType {
   ConnectOrDisconnect = 'connectOrDisconnect',
 }
 
-const removeAllShortKeyEvent = async () => {
-  Object.values(ConnectType).forEach(async (key) => {
-    const systemKey = settings.systemShortKeysMap[`system.${key}`]?.key;
-
-    if (systemKey) await unregister(systemKey);
-  });
-};
-
 const connectWithKeyboard = async (mode: ConnectType) => {
   switch (mode) {
     case ConnectType.Connect:
@@ -168,32 +171,80 @@ const connectWithKeyboard = async (mode: ConnectType) => {
     new Audio(new URL('/audio/disconnected.mp3', import.meta.url).href).play();
   }
 };
-const registerKey = async (
-  keys: IShortKeyActionMap,
-  connectType: ConnectType
-) => {
-  const key = keys[`system.${connectType}`]?.key;
 
-  if (key) {
-    console.log(`register key ${key} for ${connectType}`);
-    await register(key, connectWithKeyboard.bind(null, connectType)).catch(
-      () => {
-        console.log(`Failed to register key ${key}`);
-      }
-    );
+const removeAllShortKeyEvent = async () => {
+  for (const type of Object.values(ConnectType)) {
+    const systemKey = systemShortKeysMap.value[`system.${type}`]?.key;
+
+    if (systemKey) await unregister(systemKey);
+  }
+
+  for (const { key } of Object.values(
+    sendMsgShortKeysMap.value
+  ) as IShortKeyBaseAction[]) {
+    if (key) await unregister(key);
   }
 };
 
-const registerKeys = async (keys: IShortKeyActionMap) => {
-  await removeAllShortKeyEvent();
-  await registerKey(keys, ConnectType.Connect);
-  await registerKey(keys, ConnectType.Disconnect);
-  await registerKey(keys, ConnectType.ConnectOrDisconnect);
+const registerKeys = async () => {
+  await shortKeyMutex.acquire();
+
+  try {
+    await removeAllShortKeyEvent();
+
+    for (const type of Object.values(ConnectType)) {
+      const id: IShortKeyActionID = `system.${type}`;
+      const key = systemShortKeysMap.value[id]?.key;
+
+      if (key) {
+        console.log(`register key ${key} for ${type}`);
+        await register(key, connectWithKeyboard.bind(null, type)).catch(() => {
+          toast.add({
+            severity: 'error',
+            summary: '錯誤',
+            detail: `無法註冊 [${id}] ${key}`,
+            life: 1500,
+          });
+        });
+      }
+    }
+
+    for (const { key, value } of Object.values(
+      sendMsgShortKeysMap.value
+    ) as IShortKeyBaseAction[]) {
+      if (!key) return;
+
+      await register(key, async () => {
+        if (!port.isOpen) return;
+
+        if (value) {
+          console.log(`[write from keyboard] ${value}`);
+          console.log(await port.write(value));
+          toast.add({
+            severity: 'info',
+            summary: '訊息',
+            detail: `已發送 ${value}`,
+            life: 1500,
+          });
+        }
+      }).catch(() => {
+        toast.add({
+          severity: 'error',
+          summary: '錯誤',
+          detail: `無法註冊 [send-msg: ${value}] ${key}`,
+          life: 1500,
+        });
+      });
+    }
+  } finally {
+    shortKeyMutex.release();
+  }
 };
 
+onMounted(registerKeys);
 onUnmounted(removeAllShortKeyEvent);
-onMounted(() => registerKeys(settings.systemShortKeysMap));
-watch(settings.systemShortKeysMap, registerKeys);
+watch(systemShortKeysMap, registerKeys, { deep: true });
+watch(sendMsgShortKeysMap, registerKeys, { deep: true });
 </script>
 
 <style scoped>

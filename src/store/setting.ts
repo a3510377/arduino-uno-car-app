@@ -43,6 +43,7 @@ export const useSetting = defineStore('video', () => {
   const shortKeys = ref<IShortKeyAction[]>([]);
   const alertSounds = ref<IAlertSoundMap>({});
   const systemShortKeysMap = ref<IShortKeyActionMap>({});
+  const sendMsgShortKeysMap = ref<IShortKeyActionMap>({});
 
   const save = async () => {
     await createDir('db', { dir: BaseDirectory.App, recursive: true });
@@ -70,11 +71,15 @@ export const useSetting = defineStore('video', () => {
     shortKeys.value = mergeShortKeys(DEFAULT_SHORT_KEYS, data.shortKeys || []);
 
     const newKeysMap: IShortKeyActionMap = {};
+    const newMsgKeysMap: IShortKeyActionMap = {};
     shortKeys.value.forEach((key) => {
       if (key.id.startsWith('system.')) {
         newKeysMap[key.id] = key;
+      } else if (key.id.startsWith('send-msg.')) {
+        newMsgKeysMap[key.id] = key;
       }
     });
+    sendMsgShortKeysMap.value = newMsgKeysMap;
     systemShortKeysMap.value = newKeysMap;
 
     alertSounds.value = data.alertSounds || {};
@@ -218,39 +223,68 @@ export const useSetting = defineStore('video', () => {
 
     async editShortKey(shortKey: IShortKeyAction, newKey: string) {
       const index = shortKeys.value.findIndex((key) => key.id === shortKey.id);
-
       if (index === -1) {
         return false;
       }
+      if (shortKey.key && shortKey.key !== newKey) {
+        await unregister(shortKey.key);
+      }
 
-      if (shortKey.key) await unregister(shortKey.key);
       shortKeys.value[index].key = newKey;
       return true;
     },
 
+    removeShortKey(shortKey: IShortKeyAction) {
+      const index = shortKeys.value.findIndex((key) => key.id === shortKey.id);
+      if (index === -1) {
+        return false;
+      }
+      const data = shortKeys.value.splice(index, 1);
+      data[0].key && unregister(data[0].key);
+      return true;
+    },
+
+    addSendMsgShortKey() {
+      let id = '' as IShortKeyActionID;
+      do {
+        id = `send-msg.${makeID(20)}`;
+      } while (sendMsgShortKeysMap.value[id]);
+
+      const data = {
+        id,
+        description: '發送訊息快捷鍵',
+        key: '',
+        value: '',
+        global: false,
+      };
+
+      shortKeys.value.push(data);
+      return data;
+    },
+
+    sendMsgShortKeysMap,
     systemShortKeysMap,
     shortKeys,
     alertSounds,
   };
 });
 
-export type IShortKeyActionType = 'send-msg' | 'system';
+export type IShortKeyActionIDTypes = 'send-msg' | 'system';
+export type IShortKeyActionID = `${IShortKeyActionIDTypes}.${string}`;
 
-export interface IShortKeyAction {
-  id: `${IShortKeyActionType}.${string}`;
+export interface IShortKeyBaseAction {
   description: string;
   key?: string;
   value?: string;
-  global: boolean;
+  global?: boolean;
+}
+
+export interface IShortKeyAction extends IShortKeyBaseAction {
+  id: IShortKeyActionID;
 }
 
 export interface IShortKeyActionMap {
-  [id: `${IShortKeyActionType}.${string}`]: {
-    description: string;
-    key?: string;
-    value?: string;
-    global?: boolean;
-  };
+  [id: IShortKeyActionID]: IShortKeyBaseAction;
 }
 
 export interface IAlertSoundMap {
