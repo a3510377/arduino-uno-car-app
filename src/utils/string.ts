@@ -44,3 +44,12 @@ export const makeID = (length: number) => {
     () => characters[Math.floor(Math.random() * charactersLength)]
   ).join('');
 };
+
+export const formatShortKey = (key: string) => {
+  key = key.toLowerCase();
+  return key.charAt(0).toUpperCase() + key.slice(1);
+};
+
+export const formatShortKeys = (keys: Record<string, undefined>) => {
+  return Object.keys(keys).map(formatShortKey).join('+');
+};

@@ -9,7 +9,7 @@ import {
   ISerialPortOptions,
   SerialPort,
 } from './serial';
-import { parseSensorADCPacket } from './format';
+import { parseSensorADCPacket } from './string';
 
 export const useAvailablePorts = (interval: number = 1000) => {
   const ports = ref<Record<string, IPortInfo>>({});

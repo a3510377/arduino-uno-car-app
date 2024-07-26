@@ -164,6 +164,8 @@
 <script lang="ts" setup>
 import { ref, onUnmounted } from 'vue';
 
+import InputNumber from 'primevue/inputnumber';
+import Button from 'primevue/button';
 import Slider from 'primevue/slider';
 import Dialog from 'primevue/dialog';
 import Column from 'primevue/column';
@@ -173,13 +175,11 @@ import TabPanel from 'primevue/tabpanel';
 import Checkbox from 'primevue/checkbox';
 
 import { useToast } from 'primevue/usetoast';
+import { useClipboard } from '@vueuse/core';
+import { OnClickOutside } from '@vueuse/components';
 
 import { makeID, formatDuration } from '@/utils';
 import { IAlertSound, useSetting } from '@/store/setting';
-import { useClipboard } from '@vueuse/core';
-import Button from 'primevue/button';
-import { OnClickOutside } from '@vueuse/components';
-import InputNumber from 'primevue/inputnumber';
 
 const setting = useSetting();
 

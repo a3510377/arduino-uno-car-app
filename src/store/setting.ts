@@ -9,6 +9,7 @@ import {
   removeFile,
   readBinaryFile,
 } from '@tauri-apps/api/fs';
+import { unregister } from '@tauri-apps/api/globalShortcut';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
@@ -17,15 +18,43 @@ const SETTING_PATH = 'db/settings.json';
 const AUDIO_CACHE: { [path: string]: Blob } = {};
 const AUDIO_NAME_TEST = /[a-zA-Z0-9-_]+/;
 
+const DEFAULT_SHORT_KEYS: IShortKeyActionMap = {
+  'system.connectOrDisconnect': {
+    key: 'Ctrl+Alt+C',
+    description: '連線/斷線端口',
+    global: true,
+  },
+  'system.connect': { description: '連線端口' },
+  'system.disconnect': { description: '斷開端口連接' },
+};
+
+const mergeShortKeys = (
+  defaultKeysMap: IShortKeyActionMap,
+  newKeys: IShortKeyAction[]
+): IShortKeyAction[] => {
+  const newKeysMap: IShortKeyActionMap = { ...defaultKeysMap };
+
+  newKeys.filter(({ id }) => id).forEach((key) => (newKeysMap[key.id] = key));
+
+  return Object.entries(newKeysMap).map(([id, short]) => ({ ...short, id }));
+};
+
 export const useSetting = defineStore('video', () => {
+  const shortKeys = ref<IShortKeyAction[]>([]);
   const alertSounds = ref<IAlertSoundMap>({});
+  const systemShortKeysMap = ref<IShortKeyActionMap>({});
 
   const save = async () => {
     await createDir('db', { dir: BaseDirectory.App, recursive: true });
 
-    const json = JSON.stringify({
-      alertSounds: alertSounds.value,
-    } as ISettings);
+    const json = JSON.stringify(
+      {
+        shortKeys: shortKeys.value,
+        alertSounds: alertSounds.value,
+      } as ISettings,
+      null,
+      2
+    );
 
     await writeTextFile(SETTING_PATH, json, { dir: BaseDirectory.App });
   };
@@ -38,6 +67,16 @@ export const useSetting = defineStore('video', () => {
     const json = await readTextFile(SETTING_PATH, { dir: BaseDirectory.App });
     const data: ISettings = JSON.parse(json);
 
+    shortKeys.value = mergeShortKeys(DEFAULT_SHORT_KEYS, data.shortKeys || []);
+
+    const newKeysMap: IShortKeyActionMap = {};
+    shortKeys.value.forEach((key) => {
+      if (key.id.startsWith('system.')) {
+        newKeysMap[key.id] = key;
+      }
+    });
+    systemShortKeysMap.value = newKeysMap;
+
     alertSounds.value = data.alertSounds || {};
     for (const sound of Object.values(alertSounds.value)) {
       if (AUDIO_CACHE[sound.path]) {
@@ -47,13 +86,13 @@ export const useSetting = defineStore('video', () => {
       const buffer = await readBinaryFile(sound.path, {
         dir: BaseDirectory.App,
       });
-      AUDIO_CACHE[sound.path] = new Blob([buffer], { type: sound.type });
+      AUDIO_CACHE[sound.path] = new Blob([buffer]);
     }
   };
 
   load();
 
-  watch(alertSounds, save, { deep: true });
+  watch([alertSounds, shortKeys], save, { deep: true });
 
   return {
     load,
@@ -104,7 +143,6 @@ export const useSetting = defineStore('video', () => {
       alertSounds.value[name] = {
         name,
         path,
-        type: blob.type,
         size,
         volume: options?.volume ?? 1,
         disable: options?.disable ?? false,
@@ -152,7 +190,7 @@ export const useSetting = defineStore('video', () => {
       const buffer = await readBinaryFile(sound.path, {
         dir: BaseDirectory.App,
       });
-      const blob = new Blob([buffer], { type: sound.type });
+      const blob = new Blob([buffer]);
       AUDIO_CACHE[sound.path] = blob;
       const blobUrl = URL.createObjectURL(blob);
 
@@ -178,9 +216,42 @@ export const useSetting = defineStore('video', () => {
       return true;
     },
 
+    async editShortKey(shortKey: IShortKeyAction, newKey: string) {
+      const index = shortKeys.value.findIndex((key) => key.id === shortKey.id);
+
+      if (index === -1) {
+        return false;
+      }
+
+      if (shortKey.key) await unregister(shortKey.key);
+      shortKeys.value[index].key = newKey;
+      return true;
+    },
+
+    systemShortKeysMap,
+    shortKeys,
     alertSounds,
   };
 });
+
+export type IShortKeyActionType = 'send-msg' | 'system';
+
+export interface IShortKeyAction {
+  id: `${IShortKeyActionType}.${string}`;
+  description: string;
+  key?: string;
+  value?: string;
+  global: boolean;
+}
+
+export interface IShortKeyActionMap {
+  [id: `${IShortKeyActionType}.${string}`]: {
+    description: string;
+    key?: string;
+    value?: string;
+    global?: boolean;
+  };
+}
 
 export interface IAlertSoundMap {
   [key: string]: IAlertSound;
@@ -188,6 +259,7 @@ export interface IAlertSoundMap {
 
 export interface ISettings {
   alertSounds: IAlertSoundMap;
+  shortKeys: IShortKeyAction[];
 }
 
 export interface IExtendsSettings {
@@ -202,7 +274,6 @@ export interface IAddAlertSoundOptions {
 
 export interface IExtendsAlertSound extends IAddAlertSoundOptions {
   name: string;
-  type: string;
   path: string;
 }
 

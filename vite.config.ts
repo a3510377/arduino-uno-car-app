@@ -10,17 +10,7 @@ export default defineConfig(async () => ({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    extensions: [
-      '.mjs',
-      '.js',
-      '.ts',
-      '.jsx',
-      '.tsx',
-      '.json',
-      '.vue',
-      '.wav',
-      '.mp3',
-    ],
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

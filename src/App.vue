@@ -11,11 +11,13 @@
       <ValueShow :port="port" />
     </div>
   </div>
+  <span class="fixed bottom-5 left-5 select-none">v{{ version }}</span>
 </template>
 
 <script setup lang="ts">
-import { onUnmounted } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { unregisterAll } from '@tauri-apps/api/globalShortcut';
+import { getVersion } from '@tauri-apps/api/app';
 
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
@@ -30,13 +32,19 @@ import { useSetting } from '@/store/setting';
 
 const toast = useToast();
 const setting = useSetting();
+const version = ref<string>('0.0.0');
 
 const port = new PortUse();
+
+onMounted(async () => {
+  version.value = await getVersion();
+});
 
 onUnmounted(async () => {
   port.forceClose();
   await unregisterAll();
 });
+
 port
   .on('alert', (msg) => {
     toast.add({ severity: 'info', summary: '訊息', detail: msg, life: 3000 });
